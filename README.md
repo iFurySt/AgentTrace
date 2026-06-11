@@ -65,7 +65,7 @@ Project name resolution uses standard OpenTelemetry resource attributes:
 Default one-command SQLite deployment:
 
 ```sh
-docker compose up --build
+docker compose up
 ```
 
 The Docker compose files map the container ports to host ports that avoid common local Phoenix or collector conflicts:
@@ -75,10 +75,10 @@ http://localhost:16006 -> container :6006
 localhost:14317        -> container :4317
 ```
 
-Published image:
+The compose files use the published GHCR image and pull the latest tag on startup. The current published image is `linux/amd64`, so compose pins that platform explicitly for arm64 development machines:
 
 ```sh
-docker pull ghcr.io/ifuryst/agenttrace:latest
+ghcr.io/ifuryst/agenttrace:latest
 ```
 
 Run the published image with SQLite:
@@ -94,7 +94,7 @@ docker run --rm \
 Production-style Postgres deployment:
 
 ```sh
-docker compose -f docker-compose.postgres.yml up --build
+docker compose -f docker-compose.postgres.yml up
 ```
 
 To reuse the local dependency Postgres from `/Users/ifuryst/projects/deps`, start that compose stack and run:

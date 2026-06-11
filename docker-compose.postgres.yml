@@ -1,7 +1,8 @@
 services:
   agenttrace:
-    build: .
-    image: agenttrace:local
+    image: ghcr.io/ifuryst/agenttrace:latest
+    platform: linux/amd64
+    pull_policy: always
     environment:
       AGENTTRACE_DATABASE_DRIVER: postgres
       AGENTTRACE_DATABASE_DSN: postgres://postgres:postgres@postgres:5432/agenttrace?sslmode=disable

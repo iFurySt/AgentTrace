@@ -30,6 +30,8 @@ The same image supports both runtime modes:
 - SQLite: run the container directly or use `docker-compose.yml`.
 - Postgres: provide `AGENTTRACE_DATABASE_DRIVER=postgres` and `AGENTTRACE_DATABASE_DSN`, or use `docker-compose.postgres.yml`.
 
+Both compose files use `ghcr.io/ifuryst/agenttrace:latest` with `pull_policy: always`, so `docker compose up` checks GHCR for the current published image instead of building a local image. The service is pinned to `platform: linux/amd64` until the workflow publishes a native arm64 image.
+
 ## Local Validation
 
 Before changing CI/CD, run:

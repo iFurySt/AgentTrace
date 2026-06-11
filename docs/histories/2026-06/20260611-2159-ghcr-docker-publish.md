@@ -18,6 +18,7 @@
   - Added a GitHub Actions workflow that builds and publishes `ghcr.io/ifuryst/agenttrace`.
   - Configured Docker builds for `linux/amd64`.
   - Added GHCR image tags for `latest`, branch refs, git tags, and commit SHA tags.
+  - Updated SQLite and Postgres compose files to run `ghcr.io/ifuryst/agenttrace:latest` with `pull_policy: always` and `platform: linux/amd64`.
   - Documented the image, workflow triggers, release artifact, and supply-chain posture.
 
 ### Design Intent
@@ -27,6 +28,8 @@ The workflow publishes one runtime image that works for both SQLite and Postgres
 ### Files Modified
 
 - `.github/workflows/docker-image.yml`
+- `docker-compose.yml`
+- `docker-compose.postgres.yml`
 - `README.md`
 - `docs/CICD.md`
 - `docs/SUPPLY_CHAIN_SECURITY.md`
