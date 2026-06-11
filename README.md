@@ -1,49 +1,52 @@
 # AgentTrace
 
-AgentTrace is a small Go OTLP trace receiver and query service for agent and GenAI telemetry.
+AgentTrace is a small OTLP trace receiver for agent and GenAI telemetry.
 
-It accepts standard OTLP traces, stores projects/traces/spans through GORM, keeps raw span/resource attributes as JSON, and indexes the official OTel GenAI semantic-convention fields.
+It stores projects, traces, and spans in SQLite or Postgres, preserves raw OTLP attributes, and indexes the official OpenTelemetry `gen_ai.*` semantic-convention fields.
 
 ## Quick Start
 
-Run locally with SQLite:
+Run with Docker and SQLite:
+
+```sh
+docker compose up
+```
+
+Run with Docker and Postgres:
+
+```sh
+docker compose -f docker-compose.postgres.yml up
+```
+
+The compose files pull the published image:
+
+```text
+ghcr.io/ifuryst/agenttrace:latest
+```
+
+OTLP endpoints:
+
+```text
+HTTP: http://localhost:16006/v1/traces
+gRPC: localhost:14317
+```
+
+Useful API endpoints:
+
+```text
+GET http://localhost:16006/healthz
+GET http://localhost:16006/api/projects
+GET http://localhost:16006/api/traces?project=default&limit=100
+```
+
+Local development:
 
 ```sh
 make serve
-```
-
-Send OTLP/HTTP traces to:
-
-```text
-http://localhost:6006/v1/traces
-```
-
-Useful query endpoints:
-
-```text
-GET /healthz
-GET /api/projects
-GET /api/traces?project=heyyod&limit=100
-GET /api/traces/{trace_id}
-GET /api/spans?trace_id={trace_id}
-```
-
-Run tests:
-
-```sh
 make test
 ```
 
-Run the optional Postgres ingest integration test against the local deps Postgres:
-
-```sh
-AGENTTRACE_POSTGRES_TEST_DSN='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
-go test ./internal/otlp -run TestHTTPReceiverIngestsPostgresWhenConfigured -count=1 -v
-```
-
 ## Configuration
-
-Environment variables:
 
 | Name | Default | Description |
 | --- | --- | --- |
@@ -54,60 +57,9 @@ Environment variables:
 | `DATABASE_URL` | unset | Postgres-compatible fallback DSN for production platforms. |
 | `AGENTTRACE_DEFAULT_PROJECT` | `default` | Project used when OTLP resource data has no project name. |
 
-Project name resolution uses standard OpenTelemetry resource attributes:
-
-1. `service.name`
-2. `service.namespace`
-3. `AGENTTRACE_DEFAULT_PROJECT`
-
-## Docker
-
-Default one-command SQLite deployment:
-
-```sh
-docker compose up
-```
-
-The Docker compose files map the container ports to host ports that avoid common local Phoenix or collector conflicts:
-
-```text
-http://localhost:16006 -> container :6006
-localhost:14317        -> container :4317
-```
-
-The compose files use the published GHCR image and pull the latest tag on startup. The current published image is `linux/amd64`, so compose pins that platform explicitly for arm64 development machines:
-
-```sh
-ghcr.io/ifuryst/agenttrace:latest
-```
-
-Run the published image with SQLite:
-
-```sh
-docker run --rm \
-  -p 16006:6006 \
-  -p 14317:4317 \
-  -v agenttrace-data:/app/data \
-  ghcr.io/ifuryst/agenttrace:latest
-```
-
-Production-style Postgres deployment:
-
-```sh
-docker compose -f docker-compose.postgres.yml up
-```
-
-To reuse the local dependency Postgres from `/Users/ifuryst/projects/deps`, start that compose stack and run:
-
-```sh
-AGENTTRACE_DATABASE_DRIVER=postgres \
-AGENTTRACE_DATABASE_DSN='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
-go run ./cmd/agenttrace serve
-```
-
 ## GenAI
 
-AgentTrace preserves all OTLP attributes and indexes the current official GenAI semantic-convention fields:
+Supported indexed fields:
 
 - `gen_ai.operation.name`
 - `gen_ai.provider.name`
@@ -118,6 +70,13 @@ AgentTrace preserves all OTLP attributes and indexes the current official GenAI 
 - `gen_ai.conversation.id`
 
 OpenInference and Phoenix-specific attributes are not part of the supported contract. If a sender includes them, they are preserved only as ordinary raw OTLP attributes.
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [CI/CD](docs/CICD.md)
+- [Security](docs/SECURITY.md)
+- [Reliability](docs/RELIABILITY.md)
 
 ## License
 
