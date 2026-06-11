@@ -31,36 +31,32 @@ type Trace struct {
 }
 
 type Span struct {
-	ID                    uint   `gorm:"primaryKey"`
-	ProjectID             uint   `gorm:"not null;index"`
-	TraceRowID            uint   `gorm:"not null;index"`
-	OTelTraceID           string `gorm:"column:otel_trace_id;not null;index;uniqueIndex:idx_spans_trace_span"`
-	SpanID                string `gorm:"not null;index;uniqueIndex:idx_spans_trace_span"`
-	ParentSpanID          string `gorm:"index"`
-	Name                  string `gorm:"not null;index"`
-	SpanKind              string `gorm:"index"`
-	OTelSpanKind          string `gorm:"column:otel_span_kind;index"`
-	StatusCode            string `gorm:"not null;index"`
-	StatusMessage         string
-	StartTime             time.Time `gorm:"index"`
-	EndTime               time.Time
-	DurationMillis        int64 `gorm:"index"`
-	ScopeName             string
-	ScopeVersion          string
-	ResourceAttributes    datatypes.JSON
-	Attributes            datatypes.JSON
-	Events                datatypes.JSON
-	OpenInferenceSpanKind string `gorm:"index"`
-	GenAIOperationName    string `gorm:"index"`
-	GenAIProviderName     string `gorm:"column:gen_ai_provider_name;index"`
-	GenAIRequestModel     string `gorm:"column:gen_ai_request_model;index"`
-	GenAIResponseModel    string `gorm:"column:gen_ai_response_model;index"`
-	InputTokens           int
-	OutputTokens          int
-	InputValue            string
-	OutputValue           string
-	CreatedAt             time.Time
-	UpdatedAt             time.Time
+	ID                 uint   `gorm:"primaryKey"`
+	ProjectID          uint   `gorm:"not null;index"`
+	TraceRowID         uint   `gorm:"not null;index"`
+	OTelTraceID        string `gorm:"column:otel_trace_id;not null;index;uniqueIndex:idx_spans_trace_span"`
+	SpanID             string `gorm:"not null;index;uniqueIndex:idx_spans_trace_span"`
+	ParentSpanID       string `gorm:"index"`
+	Name               string `gorm:"not null;index"`
+	OTelSpanKind       string `gorm:"column:otel_span_kind;index"`
+	StatusCode         string `gorm:"not null;index"`
+	StatusMessage      string
+	StartTime          time.Time `gorm:"index"`
+	EndTime            time.Time
+	DurationMillis     int64 `gorm:"index"`
+	ScopeName          string
+	ScopeVersion       string
+	ResourceAttributes datatypes.JSON
+	Attributes         datatypes.JSON
+	Events             datatypes.JSON
+	GenAIOperationName string `gorm:"index"`
+	GenAIProviderName  string `gorm:"column:gen_ai_provider_name;index"`
+	GenAIRequestModel  string `gorm:"column:gen_ai_request_model;index"`
+	GenAIResponseModel string `gorm:"column:gen_ai_response_model;index"`
+	InputTokens        int
+	OutputTokens       int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 type IngestSpan struct {
@@ -68,7 +64,6 @@ type IngestSpan struct {
 	SpanID             string
 	ParentSpanID       string
 	Name               string
-	SpanKind           string
 	OTelSpanKind       string
 	StatusCode         string
 	StatusMessage      string

@@ -104,12 +104,12 @@ func (db *DB) Ingest(ctx context.Context, projectName string, spans []IngestSpan
 			if err := tx.Clauses(clause.OnConflict{
 				Columns: []clause.Column{{Name: "otel_trace_id"}, {Name: "span_id"}},
 				DoUpdates: clause.AssignmentColumns([]string{
-					"project_id", "trace_row_id", "parent_span_id", "name", "span_kind",
+					"project_id", "trace_row_id", "parent_span_id", "name",
 					"otel_span_kind", "status_code", "status_message", "start_time", "end_time",
 					"duration_millis", "scope_name", "scope_version", "resource_attributes",
-					"attributes", "events", "open_inference_span_kind", "gen_ai_operation_name",
+					"attributes", "events", "gen_ai_operation_name",
 					"gen_ai_provider_name", "gen_ai_request_model", "gen_ai_response_model",
-					"input_tokens", "output_tokens", "input_value", "output_value", "updated_at",
+					"input_tokens", "output_tokens", "updated_at",
 				}),
 			}).Create(&row).Error; err != nil {
 				return err
@@ -127,7 +127,7 @@ func (db *DB) Ingest(ctx context.Context, projectName string, spans []IngestSpan
 }
 
 func upsertTrace(tx *gorm.DB, projectID uint, ingest IngestSpan) (*Trace, error) {
-	sessionID := firstString(ingest.Attributes, "session.id", "openinference.session.id", "gen_ai.conversation.id")
+	sessionID := firstString(ingest.Attributes, "gen_ai.conversation.id")
 	var trace Trace
 	err := tx.Where("project_id = ? AND trace_id = ?", projectID, ingest.TraceID).First(&trace).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -166,7 +166,7 @@ func upsertTrace(tx *gorm.DB, projectID uint, ingest IngestSpan) (*Trace, error)
 }
 
 func buildSpan(projectID, traceRowID uint, ingest IngestSpan) (Span, error) {
-	attrs := synthesizeOpenInference(ingest.Attributes)
+	attrs := ingest.Attributes
 	attrJSON, err := marshalJSON(attrs)
 	if err != nil {
 		return Span{}, err
@@ -179,40 +179,32 @@ func buildSpan(projectID, traceRowID uint, ingest IngestSpan) (Span, error) {
 	if err != nil {
 		return Span{}, err
 	}
-	spanKind := firstString(attrs, "openinference.span.kind")
-	if spanKind == "" {
-		spanKind = inferSpanKind(attrs)
-	}
-	inputTokens := firstInt(attrs, "gen_ai.usage.input_tokens", "llm.token_count.prompt")
-	outputTokens := firstInt(attrs, "gen_ai.usage.output_tokens", "llm.token_count.completion")
+	inputTokens := firstInt(attrs, "gen_ai.usage.input_tokens")
+	outputTokens := firstInt(attrs, "gen_ai.usage.output_tokens")
 	return Span{
-		ProjectID:             projectID,
-		TraceRowID:            traceRowID,
-		OTelTraceID:           ingest.TraceID,
-		SpanID:                ingest.SpanID,
-		ParentSpanID:          ingest.ParentSpanID,
-		Name:                  ingest.Name,
-		SpanKind:              spanKind,
-		OTelSpanKind:          ingest.OTelSpanKind,
-		StatusCode:            normalizeStatus(ingest.StatusCode),
-		StatusMessage:         ingest.StatusMessage,
-		StartTime:             ingest.StartTime,
-		EndTime:               ingest.EndTime,
-		DurationMillis:        millis(ingest.StartTime, ingest.EndTime),
-		ScopeName:             ingest.ScopeName,
-		ScopeVersion:          ingest.ScopeVersion,
-		ResourceAttributes:    resourceJSON,
-		Attributes:            attrJSON,
-		Events:                eventsJSON,
-		OpenInferenceSpanKind: spanKind,
-		GenAIOperationName:    firstString(attrs, "gen_ai.operation.name"),
-		GenAIProviderName:     firstString(attrs, "gen_ai.provider.name", "gen_ai.system", "llm.provider"),
-		GenAIRequestModel:     firstString(attrs, "gen_ai.request.model", "llm.model_name"),
-		GenAIResponseModel:    firstString(attrs, "gen_ai.response.model"),
-		InputTokens:           inputTokens,
-		OutputTokens:          outputTokens,
-		InputValue:            firstString(attrs, "input.value"),
-		OutputValue:           firstString(attrs, "output.value"),
+		ProjectID:          projectID,
+		TraceRowID:         traceRowID,
+		OTelTraceID:        ingest.TraceID,
+		SpanID:             ingest.SpanID,
+		ParentSpanID:       ingest.ParentSpanID,
+		Name:               ingest.Name,
+		OTelSpanKind:       ingest.OTelSpanKind,
+		StatusCode:         normalizeStatus(ingest.StatusCode),
+		StatusMessage:      ingest.StatusMessage,
+		StartTime:          ingest.StartTime,
+		EndTime:            ingest.EndTime,
+		DurationMillis:     millis(ingest.StartTime, ingest.EndTime),
+		ScopeName:          ingest.ScopeName,
+		ScopeVersion:       ingest.ScopeVersion,
+		ResourceAttributes: resourceJSON,
+		Attributes:         attrJSON,
+		Events:             eventsJSON,
+		GenAIOperationName: firstString(attrs, "gen_ai.operation.name"),
+		GenAIProviderName:  firstString(attrs, "gen_ai.provider.name"),
+		GenAIRequestModel:  firstString(attrs, "gen_ai.request.model"),
+		GenAIResponseModel: firstString(attrs, "gen_ai.response.model"),
+		InputTokens:        inputTokens,
+		OutputTokens:       outputTokens,
 	}, nil
 }
 
@@ -304,64 +296,4 @@ func firstInt(attrs map[string]any, keys ...string) int {
 		}
 	}
 	return 0
-}
-
-func inferSpanKind(attrs map[string]any) string {
-	switch firstString(attrs, "gen_ai.operation.name") {
-	case "":
-		return ""
-	case "retrieval":
-		return "RETRIEVER"
-	case "embeddings":
-		return "EMBEDDING"
-	case "execute_tool":
-		return "TOOL"
-	default:
-		return "LLM"
-	}
-}
-
-func synthesizeOpenInference(attrs map[string]any) map[string]any {
-	out := make(map[string]any, len(attrs)+8)
-	for key, value := range attrs {
-		out[key] = value
-	}
-	if _, ok := out["openinference.span.kind"]; !ok {
-		if kind := inferSpanKind(out); kind != "" {
-			out["openinference.span.kind"] = kind
-		}
-	}
-	if value := firstString(out, "gen_ai.request.model"); value != "" {
-		if _, ok := out["llm.model_name"]; !ok {
-			out["llm.model_name"] = value
-		}
-	}
-	if value := firstString(out, "gen_ai.provider.name", "gen_ai.system"); value != "" {
-		if _, ok := out["llm.provider"]; !ok {
-			out["llm.provider"] = value
-		}
-	}
-	if value := firstInt(out, "gen_ai.usage.input_tokens"); value > 0 {
-		if _, ok := out["llm.token_count.prompt"]; !ok {
-			out["llm.token_count.prompt"] = value
-		}
-	}
-	if value := firstInt(out, "gen_ai.usage.output_tokens"); value > 0 {
-		if _, ok := out["llm.token_count.completion"]; !ok {
-			out["llm.token_count.completion"] = value
-		}
-	}
-	if _, ok := out["llm.token_count.total"]; !ok {
-		prompt := firstInt(out, "llm.token_count.prompt")
-		completion := firstInt(out, "llm.token_count.completion")
-		if prompt > 0 || completion > 0 {
-			out["llm.token_count.total"] = prompt + completion
-		}
-	}
-	if value := firstString(out, "gen_ai.conversation.id"); value != "" {
-		if _, ok := out["openinference.session.id"]; !ok {
-			out["openinference.session.id"] = value
-		}
-	}
-	return out
 }

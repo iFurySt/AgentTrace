@@ -2,7 +2,7 @@
 
 AgentTrace is a small Go OTLP trace receiver and query service for agent and GenAI telemetry.
 
-It is intentionally much smaller than Phoenix: it accepts OTLP traces, stores projects/traces/spans through GORM, keeps raw span/resource attributes as JSON, and indexes the fields needed for GenAI and OpenInference-style analysis.
+It accepts standard OTLP traces, stores projects/traces/spans through GORM, keeps raw span/resource attributes as JSON, and indexes the official OTel GenAI semantic-convention fields.
 
 ## Quick Start
 
@@ -54,12 +54,11 @@ Environment variables:
 | `DATABASE_URL` | unset | Postgres-compatible fallback DSN for production platforms. |
 | `AGENTTRACE_DEFAULT_PROJECT` | `default` | Project used when OTLP resource data has no project name. |
 
-Project name resolution follows Phoenix's useful behavior:
+Project name resolution uses standard OpenTelemetry resource attributes:
 
-1. `x-project-name` HTTP header.
-2. `openinference.project.name` OTLP resource attribute.
-3. `phoenix.project.name` or `service.namespace` resource attribute.
-4. `AGENTTRACE_DEFAULT_PROJECT`.
+1. `service.name`
+2. `service.namespace`
+3. `AGENTTRACE_DEFAULT_PROJECT`
 
 ## Docker
 
@@ -83,9 +82,9 @@ AGENTTRACE_DATABASE_DSN='postgres://postgres:postgres@localhost:5432/postgres?ss
 go run ./cmd/agenttrace serve
 ```
 
-## GenAI And OpenInference
+## GenAI
 
-AgentTrace preserves all OTLP attributes and indexes the current GenAI semantic convention fields:
+AgentTrace preserves all OTLP attributes and indexes the current official GenAI semantic-convention fields:
 
 - `gen_ai.operation.name`
 - `gen_ai.provider.name`
@@ -95,15 +94,7 @@ AgentTrace preserves all OTLP attributes and indexes the current GenAI semantic 
 - `gen_ai.usage.output_tokens`
 - `gen_ai.conversation.id`
 
-For Phoenix/OpenInference compatibility, it also synthesizes core aliases when only `gen_ai.*` attributes are present:
-
-- `openinference.span.kind`
-- `openinference.session.id`
-- `llm.provider`
-- `llm.model_name`
-- `llm.token_count.prompt`
-- `llm.token_count.completion`
-- `llm.token_count.total`
+OpenInference and Phoenix-specific attributes are not part of the supported contract. If a sender includes them, they are preserved only as ordinary raw OTLP attributes.
 
 ## License
 

@@ -11,36 +11,14 @@ import (
 	"github.com/iFurySt/AgentTrace/internal/store"
 )
 
-func DecodeRequest(req *tracepb.TracesData, projectName string) []store.IngestSpan {
-	var spans []store.IngestSpan
-	for _, resourceSpans := range req.GetResourceSpans() {
-		resourceAttrs := decodeAttributes(resourceSpans.GetResource().GetAttributes())
-		for _, scopeSpans := range resourceSpans.GetScopeSpans() {
-			scope := scopeSpans.GetScope()
-			for _, span := range scopeSpans.GetSpans() {
-				spans = append(spans, decodeSpan(resourceAttrs, scope.GetName(), scope.GetVersion(), span))
-			}
-		}
-	}
-	return spans
-}
-
 func ProjectNameFromResource(resource *resourcepb.Resource) string {
 	attrs := decodeAttributes(resource.GetAttributes())
-	for _, key := range []string{"openinference.project.name", "phoenix.project.name", "service.namespace"} {
+	for _, key := range []string{"service.name", "service.namespace"} {
 		if value, ok := attrs[key].(string); ok && value != "" {
 			return value
 		}
 	}
 	return ""
-}
-
-func ResourceProjectNames(req *tracepb.TracesData) []string {
-	names := make([]string, 0, len(req.GetResourceSpans()))
-	for _, resourceSpans := range req.GetResourceSpans() {
-		names = append(names, ProjectNameFromResource(resourceSpans.GetResource()))
-	}
-	return names
 }
 
 func DecodeResourceSpans(resourceSpans *tracepb.ResourceSpans) []store.IngestSpan {
@@ -61,7 +39,6 @@ func decodeSpan(resourceAttrs map[string]any, scopeName, scopeVersion string, sp
 		SpanID:             hex.EncodeToString(span.GetSpanId()),
 		ParentSpanID:       hex.EncodeToString(span.GetParentSpanId()),
 		Name:               span.GetName(),
-		SpanKind:           span.GetKind().String(),
 		OTelSpanKind:       span.GetKind().String(),
 		StatusCode:         decodeStatus(span.GetStatus().GetCode()),
 		StatusMessage:      span.GetStatus().GetMessage(),

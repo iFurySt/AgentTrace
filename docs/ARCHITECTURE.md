@@ -5,7 +5,7 @@ AgentTrace is a single Go binary that receives OTLP trace data and stores it for
 ## Runtime Topology
 
 - `agenttrace serve` starts one HTTP server on `AGENTTRACE_HTTP_ADDR`.
-- The HTTP server exposes Phoenix-compatible OTLP ingestion at `/v1/traces`.
+- The HTTP server exposes standard OTLP/HTTP trace ingestion at `/v1/traces`.
 - The same HTTP server exposes JSON query APIs under `/api/*`.
 - `agenttrace serve` also starts an OTLP/gRPC trace receiver on `AGENTTRACE_GRPC_ADDR` unless that value is `off`.
 - SQLite is the default local persistence layer; Postgres is supported through GORM for production.
@@ -28,30 +28,31 @@ AgentTrace uses three core tables:
 - `traces`: trace-level summary rows keyed by project and OTLP trace ID.
 - `spans`: span rows keyed by OTLP trace ID and span ID.
 
-Span resource attributes, span attributes, and events are stored as JSON. High-value GenAI/OpenInference fields are duplicated into columns for filtering and summaries:
+Span resource attributes, span attributes, and events are stored as JSON. High-value official OTel GenAI fields are duplicated into columns for filtering and summaries:
 
 - GenAI operation, provider, request model, response model.
-- OpenInference span kind.
 - Input and output token counts.
-- Input and output values when present as strings.
 
 ## OTLP Compatibility
 
-The first ingestion target is Phoenix's practical OTLP/HTTP behavior:
+The ingestion target is the OpenTelemetry protocol:
 
 - `POST /v1/traces`
 - `Content-Type: application/x-protobuf`
 - optional `Content-Encoding: gzip` or `deflate`
-- `x-project-name` header override
 
 OTLP/gRPC TraceService export is also supported for standard collectors and SDK exporters.
 
-## GenAI/OpenInference Mapping
+## GenAI Mapping
 
-The receiver keeps all original attributes. When a span only provides OTel `gen_ai.*` semantic-convention fields, AgentTrace synthesizes the core OpenInference aliases needed by Phoenix-style workflows:
+The receiver keeps all original attributes and indexes only official `gen_ai.*` semantic-convention fields:
 
-- span kind from `gen_ai.operation.name`
-- `llm.provider` from `gen_ai.provider.name` or `gen_ai.system`
-- `llm.model_name` from `gen_ai.request.model`
-- `llm.token_count.*` from `gen_ai.usage.*`
-- `openinference.session.id` from `gen_ai.conversation.id`
+- `gen_ai.operation.name`
+- `gen_ai.provider.name`
+- `gen_ai.request.model`
+- `gen_ai.response.model`
+- `gen_ai.usage.input_tokens`
+- `gen_ai.usage.output_tokens`
+- `gen_ai.conversation.id`
+
+OpenInference and Phoenix-specific fields are not a compatibility target. They remain in raw attributes if a sender emits them, but AgentTrace does not synthesize, index, or interpret them.

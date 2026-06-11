@@ -93,9 +93,6 @@ func TestHTTPReceiverIngestsGenAISpan(t *testing.T) {
 	if span.GenAIProviderName != "gemini" {
 		t.Fatalf("provider = %q", span.GenAIProviderName)
 	}
-	if span.OpenInferenceSpanKind != "LLM" {
-		t.Fatalf("openinference span kind = %q", span.OpenInferenceSpanKind)
-	}
 	if span.GenAIRequestModel != "gemini-2.5-flash" || span.InputTokens != 12 || span.OutputTokens != 8 {
 		t.Fatalf("gen ai indexed fields = %+v", span)
 	}
@@ -119,14 +116,13 @@ func TestHTTPReceiverIngestsPostgresWhenConfigured(t *testing.T) {
 	traceHex := fmt.Sprintf("%032x", now)
 	spanHex := fmt.Sprintf("%016x", now)
 	projectName := fmt.Sprintf("postgres-it-%x", now)
-	payload, err := proto.Marshal(sampleExportRequestWithIDs(t, traceHex, spanHex))
+	payload, err := proto.Marshal(sampleExportRequestWithIDsAndProject(t, traceHex, spanHex, projectName))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/x-protobuf")
-	req.Header.Set("x-project-name", projectName)
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -152,10 +148,10 @@ func TestHTTPReceiverIngestsPostgresWhenConfigured(t *testing.T) {
 
 func sampleExportRequest(t *testing.T) *collectortracepb.ExportTraceServiceRequest {
 	t.Helper()
-	return sampleExportRequestWithIDs(t, "00112233445566778899aabbccddeeff", "0011223344556677")
+	return sampleExportRequestWithIDsAndProject(t, "00112233445566778899aabbccddeeff", "0011223344556677", "heyyod")
 }
 
-func sampleExportRequestWithIDs(t *testing.T, traceHex string, spanHex string) *collectortracepb.ExportTraceServiceRequest {
+func sampleExportRequestWithIDsAndProject(t *testing.T, traceHex string, spanHex string, projectName string) *collectortracepb.ExportTraceServiceRequest {
 	t.Helper()
 	traceID, err := hex.DecodeString(traceHex)
 	if err != nil {
@@ -171,8 +167,7 @@ func sampleExportRequestWithIDs(t *testing.T, traceHex string, spanHex string) *
 		ResourceSpans: []*tracepb.ResourceSpans{
 			{
 				Resource: &resourcepb.Resource{Attributes: []*commonpb.KeyValue{
-					kv("openinference.project.name", stringValue("heyyod")),
-					kv("service.name", stringValue("heyyod")),
+					kv("service.name", stringValue(projectName)),
 				}},
 				ScopeSpans: []*tracepb.ScopeSpans{
 					{

@@ -62,7 +62,7 @@ func (r *Receiver) Export(ctx context.Context, req *collectortracepb.ExportTrace
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing request")
 	}
-	if err := r.ingest(ctx, req.GetResourceSpans(), ""); err != nil {
+	if err := r.ingest(ctx, req.GetResourceSpans()); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &collectortracepb.ExportTraceServiceResponse{}, nil
@@ -88,7 +88,7 @@ func (r *Receiver) handleHTTPTraces(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "request body is invalid ExportTraceServiceRequest", http.StatusUnprocessableEntity)
 		return
 	}
-	if err := r.ingest(req.Context(), exportReq.GetResourceSpans(), req.Header.Get("x-project-name")); err != nil {
+	if err := r.ingest(req.Context(), exportReq.GetResourceSpans()); err != nil {
 		r.log().Error("failed to ingest otlp traces", "error", err)
 		http.Error(w, "failed to ingest traces", http.StatusInternalServerError)
 		return
@@ -99,17 +99,11 @@ func (r *Receiver) handleHTTPTraces(w http.ResponseWriter, req *http.Request) {
 	_, _ = w.Write(resp)
 }
 
-func (r *Receiver) ingest(ctx context.Context, resourceSpans []*tracepb.ResourceSpans, projectHeader string) error {
-	defaultProject := strings.TrimSpace(projectHeader)
-	if defaultProject == "" {
-		defaultProject = r.defaultProject()
-	}
+func (r *Receiver) ingest(ctx context.Context, resourceSpans []*tracepb.ResourceSpans) error {
+	defaultProject := r.defaultProject()
 	total := 0
 	for _, rs := range resourceSpans {
-		projectName := strings.TrimSpace(projectHeader)
-		if projectName == "" {
-			projectName = ProjectNameFromResource(rs.GetResource())
-		}
+		projectName := ProjectNameFromResource(rs.GetResource())
 		if projectName == "" {
 			projectName = defaultProject
 		}
