@@ -75,6 +75,22 @@ http://localhost:16006 -> container :6006
 localhost:14317        -> container :4317
 ```
 
+Published image:
+
+```sh
+docker pull ghcr.io/ifuryst/agenttrace:latest
+```
+
+Run the published image with SQLite:
+
+```sh
+docker run --rm \
+  -p 16006:6006 \
+  -p 14317:4317 \
+  -v agenttrace-data:/app/data \
+  ghcr.io/ifuryst/agenttrace:latest
+```
+
 Production-style Postgres deployment:
 
 ```sh

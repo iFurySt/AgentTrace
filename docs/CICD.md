@@ -1,29 +1,50 @@
 # CI/CD Guide
 
-This template no longer ships default GitHub Actions CI/CD scaffolding.
+AgentTrace publishes its runtime container image to GitHub Container Registry.
 
-## Current State
+## Workflows
 
-- There are no default workflows under `.github/workflows/`.
-- The repository no longer provides `make ci`, `scripts/ci.sh`, or `scripts/release-package.sh`.
-- Add testing, build, scanning, release, and deployment workflows later when the real project stack is known.
+### Docker Image
 
-## Design Principle
+File: `.github/workflows/docker-image.yml`
 
-CI/CD should serve the real project instead of preserving placeholder automation in the template.
+Triggers:
 
-Once the stack is known, start with the smallest real validation path, then add build artifacts, supply-chain scanning, release, and deployment. Pin new GitHub Actions to commit SHAs instead of floating tags.
+- `push` to `main`: builds and pushes `ghcr.io/ifuryst/agenttrace:latest`, `:main`, and `:sha-<short-sha>`.
+- `push` of tags matching `v*`: builds and pushes the matching version tag plus `:sha-<short-sha>`.
+- `pull_request` to `main`: builds the image without pushing it.
+- `workflow_dispatch`: allows a manual build and publish run.
 
-## Recommended Customization Sequence
+The workflow builds a single multi-architecture image for:
 
-1. Define the project's own local validation command.
-2. Add a minimal pull-request gate that runs real tests, lint, or smoke checks.
-3. Add packaging, SBOM, and provenance after a real deliverable exists.
-4. Add environment-specific deployment jobs after a real runtime and target environment exist.
-5. Document all pipeline entry points and release artifacts in this file.
+- `linux/amd64`
+- `linux/arm64`
 
-## When Adding CI/CD Back
+## Release Artifact
 
-- Do not restore workflows that only package placeholder metadata.
-- Do not expose stale or unmaintained commands in `Makefile`.
-- If release automation is added, update `docs/SUPPLY_CHAIN_SECURITY.md` and `docs/releases/README.md` in the same change.
+Published image:
+
+```text
+ghcr.io/ifuryst/agenttrace
+```
+
+The same image supports both runtime modes:
+
+- SQLite: run the container directly or use `docker-compose.yml`.
+- Postgres: provide `AGENTTRACE_DATABASE_DRIVER=postgres` and `AGENTTRACE_DATABASE_DSN`, or use `docker-compose.postgres.yml`.
+
+## Local Validation
+
+Before changing CI/CD, run:
+
+```sh
+go test ./...
+docker compose config
+docker compose -f docker-compose.postgres.yml config
+```
+
+## Maintenance Notes
+
+- GitHub Actions are pinned to immutable commit SHAs with comments recording the source major tag.
+- The workflow grants only `contents: read`, `packages: write`, and `id-token: write`.
+- The Docker build emits BuildKit SBOM and provenance attestations.
