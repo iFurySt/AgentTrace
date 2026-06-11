@@ -68,6 +68,13 @@ Default one-command SQLite deployment:
 docker compose up --build
 ```
 
+The Docker compose files map the container ports to host ports that avoid common local Phoenix or collector conflicts:
+
+```text
+http://localhost:16006 -> container :6006
+localhost:14317        -> container :4317
+```
+
 Production-style Postgres deployment:
 
 ```sh
