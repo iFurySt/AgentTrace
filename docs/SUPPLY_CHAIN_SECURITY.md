@@ -4,14 +4,14 @@ This document records AgentTrace's current supply-chain posture and the controls
 
 ## Current State
 
-AgentTrace publishes a multi-architecture Docker image to GitHub Container Registry through `.github/workflows/docker-image.yml`.
+AgentTrace publishes a Docker image to GitHub Container Registry through `.github/workflows/docker-image.yml`.
 
 Current controls:
 
 - Do not commit secrets, tokens, or local private configuration.
 - Keep Go dependency manifests committed through `go.mod` and `go.sum`.
 - Pin GitHub Actions to immutable commit SHAs instead of floating tags.
-- Build and push a single multi-architecture image for `linux/amd64` and `linux/arm64`.
+- Build and push a single `linux/amd64` image.
 - Emit BuildKit SBOM and provenance attestations with the pushed image.
 
 ## Tooling To Add Later
@@ -29,6 +29,7 @@ Current controls:
 ## What To Do Next
 
 - Add ecosystem-specific vulnerability scanning for Go modules and container images.
+- Add `linux/arm64` publishing after optimizing the CGO SQLite build for CI runtime.
 - Make release tags intentional and document versioning rules before the first public release.
 - Gate production deployment on release artifact provenance verification when possible.
 - Consider verifying attestations in the deployment environment or cluster admission layer.

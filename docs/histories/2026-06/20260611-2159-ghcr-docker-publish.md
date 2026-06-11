@@ -16,13 +16,13 @@
 - Key actions:
   - Changed the GitHub repository visibility from private to public.
   - Added a GitHub Actions workflow that builds and publishes `ghcr.io/ifuryst/agenttrace`.
-  - Configured multi-architecture Docker builds for `linux/amd64` and `linux/arm64`.
+  - Configured Docker builds for `linux/amd64`.
   - Added GHCR image tags for `latest`, branch refs, git tags, and commit SHA tags.
   - Documented the image, workflow triggers, release artifact, and supply-chain posture.
 
 ### Design Intent
 
-The workflow publishes one runtime image that works for both SQLite and Postgres deployments. Runtime mode stays configuration-driven through environment variables and compose files instead of producing separate images.
+The workflow publishes one runtime image that works for both SQLite and Postgres deployments. Runtime mode stays configuration-driven through environment variables and compose files instead of producing separate images. The first GHCR workflow targets `linux/amd64` so CI can produce the image quickly; `linux/arm64` can be added after the CGO SQLite build is optimized for CI runtime.
 
 ### Files Modified
 

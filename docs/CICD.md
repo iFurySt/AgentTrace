@@ -15,10 +15,7 @@ Triggers:
 - `pull_request` to `main`: builds the image without pushing it.
 - `workflow_dispatch`: allows a manual build and publish run.
 
-The workflow builds a single multi-architecture image for:
-
-- `linux/amd64`
-- `linux/arm64`
+The workflow currently builds a single `linux/amd64` image. Multi-architecture publishing can be added later once the CGO SQLite build is optimized for CI runtime.
 
 ## Release Artifact
 
