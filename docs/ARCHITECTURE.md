@@ -1,25 +1,57 @@
 # Architecture
 
-This file is the top-level map for the repository. Replace the placeholders below as the real project takes shape.
+AgentTrace is a single Go binary that receives OTLP trace data and stores it for lightweight agent and GenAI trace querying.
 
-## Intended Repository Shape
+## Runtime Topology
 
-- `apps/`: deployable applications or entry points.
-- `packages/`: shared libraries and contracts.
-- `infra/`: deployment, infrastructure, and environment definitions.
-- `scripts/`: repository automation that agents can run directly.
-- `docs/`: the repository knowledge base and system of record.
+- `agenttrace serve` starts one HTTP server on `AGENTTRACE_HTTP_ADDR`.
+- The HTTP server exposes Phoenix-compatible OTLP ingestion at `/v1/traces`.
+- The same HTTP server exposes JSON query APIs under `/api/*`.
+- `agenttrace serve` also starts an OTLP/gRPC trace receiver on `AGENTTRACE_GRPC_ADDR` unless that value is `off`.
+- SQLite is the default local persistence layer; Postgres is supported through GORM for production.
 
-## Boundary Rules
+## Package Layout
 
-- Put business logic in reusable packages before spreading it across apps.
-- Keep infrastructure and runtime orchestration explicit and versioned.
-- Avoid hidden cross-package coupling; document allowed dependency directions once the stack is real.
-- When the architecture changes, update this file in the same task.
+- `cmd/agenttrace`: binary entry point.
+- `internal/cli`: Cobra command wiring and process lifecycle.
+- `internal/config`: environment and default configuration.
+- `internal/otlp`: OTLP protobuf decoding, HTTP receiver, and gRPC TraceService receiver.
+- `internal/store`: GORM models, migrations, ingestion, and query methods.
+- `internal/httpapi`: health and JSON query routes.
+- `docs/`: repository knowledge base and change history.
 
-## To Fill In For A New Project
+## Data Model
 
-- Primary product surfaces and runtime topology.
-- Package layering and import boundaries.
-- Data flow and persistence model.
-- Observability stack and local development model.
+AgentTrace uses three core tables:
+
+- `projects`: named project buckets.
+- `traces`: trace-level summary rows keyed by project and OTLP trace ID.
+- `spans`: span rows keyed by OTLP trace ID and span ID.
+
+Span resource attributes, span attributes, and events are stored as JSON. High-value GenAI/OpenInference fields are duplicated into columns for filtering and summaries:
+
+- GenAI operation, provider, request model, response model.
+- OpenInference span kind.
+- Input and output token counts.
+- Input and output values when present as strings.
+
+## OTLP Compatibility
+
+The first ingestion target is Phoenix's practical OTLP/HTTP behavior:
+
+- `POST /v1/traces`
+- `Content-Type: application/x-protobuf`
+- optional `Content-Encoding: gzip` or `deflate`
+- `x-project-name` header override
+
+OTLP/gRPC TraceService export is also supported for standard collectors and SDK exporters.
+
+## GenAI/OpenInference Mapping
+
+The receiver keeps all original attributes. When a span only provides OTel `gen_ai.*` semantic-convention fields, AgentTrace synthesizes the core OpenInference aliases needed by Phoenix-style workflows:
+
+- span kind from `gen_ai.operation.name`
+- `llm.provider` from `gen_ai.provider.name` or `gen_ai.system`
+- `llm.model_name` from `gen_ai.request.model`
+- `llm.token_count.*` from `gen_ai.usage.*`
+- `openinference.session.id` from `gen_ai.conversation.id`

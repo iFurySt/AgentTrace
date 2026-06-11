@@ -1,0 +1,17 @@
+services:
+  agenttrace:
+    build: .
+    image: agenttrace:local
+    environment:
+      AGENTTRACE_DATABASE_DRIVER: sqlite
+      AGENTTRACE_DATABASE_DSN: /app/data/agenttrace.db
+      AGENTTRACE_HTTP_ADDR: :6006
+      AGENTTRACE_GRPC_ADDR: :4317
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    volumes:
+      - agenttrace-data:/app/data
+
+volumes:
+  agenttrace-data:

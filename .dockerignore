@@ -1,0 +1,7 @@
+.git
+data
+tmp
+*.db
+*.sqlite
+Dockerfile
+docker-compose*.yml

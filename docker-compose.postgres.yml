@@ -1,0 +1,32 @@
+services:
+  agenttrace:
+    build: .
+    image: agenttrace:local
+    environment:
+      AGENTTRACE_DATABASE_DRIVER: postgres
+      AGENTTRACE_DATABASE_DSN: postgres://postgres:postgres@postgres:5432/agenttrace?sslmode=disable
+      AGENTTRACE_HTTP_ADDR: :6006
+      AGENTTRACE_GRPC_ADDR: :4317
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agenttrace
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agenttrace"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - agenttrace-postgres:/var/lib/postgresql/data
+
+volumes:
+  agenttrace-postgres:

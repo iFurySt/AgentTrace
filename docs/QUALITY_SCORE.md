@@ -13,8 +13,8 @@ Track quality by product area and architectural layer so agents can prioritize t
 
 | Area | Score | Why | Next Step |
 | --- | --- | --- | --- |
-| Product surface | D | Not yet defined. | Define the first user journey and acceptance criteria. |
-| Architecture docs | C | Base scaffold exists but needs project-specific content. | Fill in `docs/ARCHITECTURE.md`. |
-| Testing | D | No stack-specific tests yet. | Add a minimal smoke path with one real command. |
-| Observability | D | No local stack or conventions yet. | Document logs, metrics, traces, local access, and future pipeline access. |
-| Security | C | Defaults are documented, implementation is pending. | Add real auth, secret, and dependency rules. |
+| Product surface | C | The first OTLP ingest and JSON query surface exists, but filtering and UI are still minimal. | Add richer trace/span filters and a compact web explorer. |
+| Architecture docs | B | Runtime topology, package boundaries, storage model, and OTLP compatibility are documented. | Keep docs aligned as query APIs evolve. |
+| Testing | C | A real OTLP/HTTP protobuf ingest test covers gzip, GenAI attributes, OpenInference synthesis, and query persistence. | Add Postgres-backed integration tests and gRPC receiver tests. |
+| Observability | C | The service logs receiver startup and ingest counts and exposes `/healthz`. | Add structured request logs and basic Prometheus metrics. |
+| Security | C | No auth is enabled; defaults are intended for local/private deployment. | Add deployment guidance for network boundaries and optional API auth before public exposure. |
