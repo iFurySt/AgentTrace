@@ -21,7 +21,7 @@
   - Added GenAI indexing and core OpenInference alias synthesis.
   - Added JSON query endpoints for health, projects, traces, trace detail, and spans.
   - Added Dockerfile plus SQLite and Postgres compose files.
-  - Added a real protobuf ingest test.
+  - Added real protobuf ingest tests for SQLite and optional Postgres persistence.
 
 ### Design Intent
 

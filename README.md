@@ -34,6 +34,13 @@ Run tests:
 make test
 ```
 
+Run the optional Postgres ingest integration test against the local deps Postgres:
+
+```sh
+AGENTTRACE_POSTGRES_TEST_DSN='postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable' \
+go test ./internal/otlp -run TestHTTPReceiverIngestsPostgresWhenConfigured -count=1 -v
+```
+
 ## Configuration
 
 Environment variables:

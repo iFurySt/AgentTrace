@@ -5,8 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -99,13 +101,67 @@ func TestHTTPReceiverIngestsGenAISpan(t *testing.T) {
 	}
 }
 
-func sampleExportRequest(t *testing.T) *collectortracepb.ExportTraceServiceRequest {
-	t.Helper()
-	traceID, err := hex.DecodeString("00112233445566778899aabbccddeeff")
+func TestHTTPReceiverIngestsPostgresWhenConfigured(t *testing.T) {
+	dsn := os.Getenv("AGENTTRACE_POSTGRES_TEST_DSN")
+	if dsn == "" {
+		t.Skip("set AGENTTRACE_POSTGRES_TEST_DSN to run Postgres ingest integration test")
+	}
+	db, err := store.Open("postgres", dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	spanID, err := hex.DecodeString("0011223344556677")
+	t.Cleanup(func() { _ = db.Close() })
+
+	mux := http.NewServeMux()
+	(&otlp.Receiver{DB: db, DefaultProject: "default"}).RegisterHTTP(mux)
+
+	now := time.Now().UnixNano()
+	traceHex := fmt.Sprintf("%032x", now)
+	spanHex := fmt.Sprintf("%016x", now)
+	projectName := fmt.Sprintf("postgres-it-%x", now)
+	payload, err := proto.Marshal(sampleExportRequestWithIDs(t, traceHex, spanHex))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/x-protobuf")
+	req.Header.Set("x-project-name", projectName)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
+	}
+
+	traces, err := db.Traces(context.Background(), projectName, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(traces) != 1 || traces[0].TraceID != traceHex {
+		t.Fatalf("traces = %+v, want trace %s", traces, traceHex)
+	}
+	spans, err := db.Spans(context.Background(), traceHex, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(spans) != 1 || spans[0].GenAIRequestModel != "gemini-2.5-flash" {
+		t.Fatalf("spans = %+v", spans)
+	}
+}
+
+func sampleExportRequest(t *testing.T) *collectortracepb.ExportTraceServiceRequest {
+	t.Helper()
+	return sampleExportRequestWithIDs(t, "00112233445566778899aabbccddeeff", "0011223344556677")
+}
+
+func sampleExportRequestWithIDs(t *testing.T, traceHex string, spanHex string) *collectortracepb.ExportTraceServiceRequest {
+	t.Helper()
+	traceID, err := hex.DecodeString(traceHex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spanID, err := hex.DecodeString(spanHex)
 	if err != nil {
 		t.Fatal(err)
 	}
